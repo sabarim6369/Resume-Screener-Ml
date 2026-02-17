@@ -439,7 +439,7 @@ function Dashboard() {
                   </div>
 
                   {/* Detailed Scores */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-gray-400">Skills Match</span>
@@ -477,27 +477,6 @@ function Dashboard() {
                           style={{ width: `${candidate.education_match}%` }}
                         ></div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Matched Skills */}
-                  <div>
-                    <h4 className="text-white font-semibold mb-2">Resume File:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.matched_skills && candidate.matched_skills.length > 0 ? (
-                        candidate.matched_skills.map((skill, skillIndex) => (
-                          <span
-                            key={skillIndex}
-                            className="bg-purple-600/30 text-purple-300 px-3 py-1 rounded-full text-sm border border-purple-500/50"
-                          >
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <div className="bg-slate-800/50 rounded-lg px-4 py-2 border border-white/10">
-                          <p className="text-gray-400 text-sm">{candidate.name}</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
