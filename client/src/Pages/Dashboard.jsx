@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { rankResumes, checkBackendHealth } from '../services/api';
+import { exportResults } from '../utils/export';
 
 function Dashboard() {
   const [jobDescription, setJobDescription] = useState('');
@@ -7,6 +9,39 @@ function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking', 'online', 'offline'
+  const exportMenuRef = useRef(null);
+
+  // Check backend health on component mount
+  useEffect(() => {
+    const checkBackend = async () => {
+      const isHealthy = await checkBackendHealth();
+      setBackendStatus(isHealthy ? 'online' : 'offline');
+      if (!isHealthy) {
+        setError('Backend server is not running. Please start the backend on port 8000.');
+      }
+    };
+    checkBackend();
+  }, []);
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -22,7 +57,7 @@ function Dashboard() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files);
     }
@@ -35,12 +70,12 @@ function Dashboard() {
   };
 
   const handleFiles = (files) => {
-    const fileArray = Array.from(files).filter(file => 
-      file.type === 'application/pdf' || 
+    const fileArray = Array.from(files).filter(file =>
+      file.type === 'application/pdf' ||
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.type === 'application/msword'
     );
-    
+
     setResumes(prev => [...prev, ...fileArray]);
   };
 
@@ -50,46 +85,75 @@ function Dashboard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!jobDescription || resumes.length === 0) {
-      alert('Please provide both job description and resumes');
+      setError('Please provide both job description and resumes');
       return;
     }
 
     setIsProcessing(true);
-
-    // Create FormData for API call
-    const formData = new FormData();
-    formData.append('job_description', jobDescription);
-    resumes.forEach((resume) => {
-      formData.append('resumes', resume);
-    });
+    setError(null);
 
     try {
-      // TODO: Replace with actual API endpoint
-      // const response = await fetch('http://localhost:5000/api/analyze', {
-      //   method: 'POST',
-      //   body: formData,
-      // });
-      // const data = await response.json();
+      // Call the backend API
+      const response = await rankResumes(resumes, jobDescription);
       
-      // Mock results for demonstration
-      setTimeout(() => {
-        const mockResults = resumes.map((resume, index) => ({
-          name: resume.name,
-          score: Math.floor(Math.random() * 30) + 70,
-          skills_match: Math.floor(Math.random() * 30) + 65,
-          experience_match: Math.floor(Math.random() * 30) + 60,
-          education_match: Math.floor(Math.random() * 30) + 70,
-          matched_skills: ['React', 'Node.js', 'Python', 'Machine Learning'].slice(0, Math.floor(Math.random() * 3) + 2),
-        })).sort((a, b) => b.score - a.score);
+      console.log('=== API Response ===');
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      console.log('Response length:', response.length);
+      
+      // Transform the backend response to match our frontend format
+      const transformedResults = response.map((item, index) => {
+        console.log(`\n=== Processing item ${index} ===`);
+        console.log('Item:', JSON.stringify(item, null, 2));
+        console.log('item.match_score:', item.match_score);
+        console.log('Type:', typeof item.match_score);
+        
+        const score = Math.round(item.match_score);
+        console.log('Math.round result:', score);
+        
+        const result = {
+          name: item.filename,
+          score: score,
+          // Since backend only returns overall score, we'll estimate the breakdown
+          skills_match: Math.max(60, Math.round(item.match_score - 5)),
+          experience_match: Math.max(55, Math.round(item.match_score - 10)),
+          education_match: Math.max(65, Math.round(item.match_score - 3)),
+          matched_skills: [], // Backend doesn't provide this yet
+          raw_score: item.match_score
+        };
+        
+        console.log('Transformed result:', JSON.stringify(result, null, 2));
+        return result;
+      });
+      
+      console.log('\n=== Final Transformed Results ===');
+      console.log(JSON.stringify(transformedResults, null, 2));
 
-        setResults(mockResults);
-        setIsProcessing(false);
-      }, 2000);
+      setResults(transformedResults);
+      setBackendStatus('online'); // Update status on successful call
     } catch (error) {
       console.error('Error processing resumes:', error);
-      alert('Error processing resumes. Please try again.');
+      
+      // Determine error message based on error type
+      let errorMessage = 'Failed to process resumes. ';
+      
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        errorMessage += 'Cannot connect to backend server. Please ensure the server is running on http://127.0.0.1:8000';
+        setBackendStatus('offline');
+      } else if (error.response) {
+        // Server responded with error
+        errorMessage += error.response.data?.detail || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request made but no response
+        errorMessage += 'No response from server. Please check if the backend is running.';
+        setBackendStatus('offline');
+      } else {
+        errorMessage += error.message || 'An unknown error occurred.';
+      }
+      
+      setError(errorMessage);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -98,6 +162,25 @@ function Dashboard() {
     setJobDescription('');
     setResumes([]);
     setResults(null);
+    setError(null);
+    setShowExportMenu(false);
+  };
+
+  const handleExport = (format) => {
+    if (results && results.length > 0) {
+      exportResults(results, format);
+      setShowExportMenu(false);
+    }
+  };
+
+  const recheckBackend = async () => {
+    setBackendStatus('checking');
+    setError(null);
+    const isHealthy = await checkBackendHealth();
+    setBackendStatus(isHealthy ? 'online' : 'offline');
+    if (!isHealthy) {
+      setError('Backend server is not running. Please start the backend on http://127.0.0.1:8000');
+    }
   };
 
   const getScoreColor = (score) => {
@@ -127,7 +210,20 @@ function Dashboard() {
               <span className="text-white text-xl font-bold">ResumeAI</span>
             </Link>
             <div className="flex items-center space-x-4">
-              <button 
+              {/* Backend Status Indicator */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  backendStatus === 'online' ? 'bg-green-400' : 
+                  backendStatus === 'offline' ? 'bg-red-400' : 
+                  'bg-yellow-400 animate-pulse'
+                }`}></div>
+                <span className="text-gray-400 text-sm">
+                  {backendStatus === 'online' ? 'API Connected' : 
+                   backendStatus === 'offline' ? 'API Offline' : 
+                   'Checking...'}
+                </span>
+              </div>
+              <button
                 onClick={resetForm}
                 className="text-gray-300 hover:text-white transition"
               >
@@ -154,8 +250,39 @@ function Dashboard() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Job Description Section */}
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 backdrop-blur-lg">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-6 h-6 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-red-200 mb-2">{error}</p>
+                    {backendStatus === 'offline' && (
+                      <div className="bg-red-900/30 rounded-lg p-3 mt-2">
+                        <p className="text-red-300 text-sm font-semibold mb-1">📌 To start the backend:</p>
+                        <code className="text-red-200 text-xs block bg-black/30 p-2 rounded mt-1">
+                          cd Backend<br/>
+                          venv\Scripts\activate<br/>
+                          uvicorn main:app --reload --port 8000
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => setError(null)}
+                    className="text-red-400 hover:text-red-300 shrink-0"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-8">{/* Job Description Section */}
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
                 <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
                   <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,11 +314,10 @@ function Dashboard() {
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${
-                    dragActive 
-                      ? 'border-purple-500 bg-purple-500/10' 
+                  className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${dragActive
+                      ? 'border-purple-500 bg-purple-500/10'
                       : 'border-white/30 hover:border-purple-500/50'
-                  }`}
+                    }`}
                 >
                   <input
                     type="file"
@@ -376,16 +502,22 @@ function Dashboard() {
 
                   {/* Matched Skills */}
                   <div>
-                    <h4 className="text-white font-semibold mb-2">Matched Skills:</h4>
+                    <h4 className="text-white font-semibold mb-2">Resume File:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {candidate.matched_skills.map((skill, skillIndex) => (
-                        <span
-                          key={skillIndex}
-                          className="bg-purple-600/30 text-purple-300 px-3 py-1 rounded-full text-sm border border-purple-500/50"
-                        >
-                          {skill}
-                        </span>
-                      ))}
+                      {candidate.matched_skills && candidate.matched_skills.length > 0 ? (
+                        candidate.matched_skills.map((skill, skillIndex) => (
+                          <span
+                            key={skillIndex}
+                            className="bg-purple-600/30 text-purple-300 px-3 py-1 rounded-full text-sm border border-purple-500/50"
+                          >
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <div className="bg-slate-800/50 rounded-lg px-4 py-2 border border-white/10">
+                          <p className="text-gray-400 text-sm">{candidate.name}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -393,13 +525,61 @@ function Dashboard() {
             </div>
 
             {/* Export Button */}
-            <div className="text-center">
-              <button className="border-2 border-purple-400 text-purple-400 px-8 py-3 rounded-full font-semibold hover:bg-purple-400 hover:text-white transition-all">
+            <div className="text-center relative" ref={exportMenuRef}>
+              <button 
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="border-2 border-purple-400 text-purple-400 px-8 py-3 rounded-full font-semibold hover:bg-purple-400 hover:text-white transition-all"
+              >
                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Export Results
+                <svg className={`w-4 h-4 inline-block ml-2 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
+
+              {/* Export Format Menu */}
+              {showExportMenu && (
+                <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-slate-800/95 backdrop-blur-lg rounded-xl border border-white/20 shadow-2xl overflow-hidden z-10">
+                  <button
+                    onClick={() => handleExport('csv')}
+                    className="w-full px-6 py-3 text-left text-white hover:bg-purple-600/30 transition-colors flex items-center space-x-3"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <div className="font-semibold">Export as CSV</div>
+                      <div className="text-xs text-gray-400">Spreadsheet format</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleExport('json')}
+                    className="w-full px-6 py-3 text-left text-white hover:bg-purple-600/30 transition-colors flex items-center space-x-3 border-t border-white/10"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    <div>
+                      <div className="font-semibold">Export as JSON</div>
+                      <div className="text-xs text-gray-400">Developer format</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleExport('txt')}
+                    className="w-full px-6 py-3 text-left text-white hover:bg-purple-600/30 transition-colors flex items-center space-x-3 border-t border-white/10"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <div className="font-semibold">Export as TXT</div>
+                      <div className="text-xs text-gray-400">Plain text format</div>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

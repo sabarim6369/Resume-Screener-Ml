@@ -44,7 +44,7 @@ function Landingpage() {
             <span className="bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Screening</span>
           </h1>
           <p className="text-xl text-gray-300 mb-12 max-w-3xl mx-auto">
-            Revolutionize your hiring process with advanced machine learning. 
+            Revolutionize your hiring process with advanced machine learning.
             Upload resumes, analyze candidates, and get intelligent rankings in seconds.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -136,7 +136,7 @@ function Landingpage() {
                     <span className="text-green-400 font-bold">95%</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-linear-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{width: '95%'}}></div>
+                    <div className="bg-linear-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{ width: '95%' }}></div>
                   </div>
                 </div>
                 <div className="bg-linear-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-6 border border-purple-500/30">
@@ -145,7 +145,7 @@ function Landingpage() {
                     <span className="text-blue-400 font-bold">88%</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-linear-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{width: '88%'}}></div>
+                    <div className="bg-linear-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '88%' }}></div>
                   </div>
                 </div>
                 <div className="bg-linear-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-6 border border-purple-500/30">
@@ -154,7 +154,7 @@ function Landingpage() {
                     <span className="text-yellow-400 font-bold">82%</span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-linear-to-r from-yellow-500 to-orange-500 h-2 rounded-full" style={{width: '82%'}}></div>
+                    <div className="bg-linear-to-r from-yellow-500 to-orange-500 h-2 rounded-full" style={{ width: '82%' }}></div>
                   </div>
                 </div>
               </div>
