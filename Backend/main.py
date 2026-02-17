@@ -4,6 +4,7 @@ import shutil
 from parser import extract_text_from_pdf
 from preprocess import clean_text
 from ranking import final_score
+from detailed_scoring import calculate_detailed_score
 from typing import List
 
 app = FastAPI()
@@ -78,13 +79,19 @@ async def rank_resumes(
         print(f"Cleaned resume length: {len(clean_resume)}")
         print(f"Cleaned resume (first 100 chars): {clean_resume[:100]}")
 
-        score = final_score(clean_resume, clean_jd)
-        print(f"Raw score: {score}")
-        print(f"Percentage score: {round(score*100,2)}")
+        # Calculate detailed scores
+        detailed_scores = calculate_detailed_score(clean_resume, clean_jd)
+        
+        print(f"Overall score: {detailed_scores['overall']}")
+        print(f"Skills: {detailed_scores['skills']}, Experience: {detailed_scores['experience']}, Education: {detailed_scores['education']}")
+        print(f"Percentage - Overall: {round(detailed_scores['overall']*100,2)}%")
 
         results.append({
             "filename": resume.filename,
-            "match_score": round(score*100,2)
+            "match_score": round(detailed_scores['overall']*100, 2),
+            "skills_match": round(detailed_scores['skills']*100, 2),
+            "experience_match": round(detailed_scores['experience']*100, 2),
+            "education_match": round(detailed_scores['education']*100, 2)
         })
 
     ranked = sorted(results, key=lambda x: x["match_score"], reverse=True)

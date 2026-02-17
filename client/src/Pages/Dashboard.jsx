@@ -98,37 +98,17 @@ function Dashboard() {
       // Call the backend API
       const response = await rankResumes(resumes, jobDescription);
       
-      console.log('=== API Response ===');
-      console.log('Full response:', JSON.stringify(response, null, 2));
-      console.log('Response length:', response.length);
-      
       // Transform the backend response to match our frontend format
-      const transformedResults = response.map((item, index) => {
-        console.log(`\n=== Processing item ${index} ===`);
-        console.log('Item:', JSON.stringify(item, null, 2));
-        console.log('item.match_score:', item.match_score);
-        console.log('Type:', typeof item.match_score);
-        
-        const score = Math.round(item.match_score);
-        console.log('Math.round result:', score);
-        
-        const result = {
-          name: item.filename,
-          score: score,
-          // Since backend only returns overall score, we'll estimate the breakdown
-          skills_match: Math.max(60, Math.round(item.match_score - 5)),
-          experience_match: Math.max(55, Math.round(item.match_score - 10)),
-          education_match: Math.max(65, Math.round(item.match_score - 3)),
-          matched_skills: [], // Backend doesn't provide this yet
-          raw_score: item.match_score
-        };
-        
-        console.log('Transformed result:', JSON.stringify(result, null, 2));
-        return result;
-      });
-      
-      console.log('\n=== Final Transformed Results ===');
-      console.log(JSON.stringify(transformedResults, null, 2));
+      const transformedResults = response.map((item) => ({
+        name: item.filename,
+        score: Math.round(item.match_score),
+        // Use real scores from backend
+        skills_match: Math.round(item.skills_match),
+        experience_match: Math.round(item.experience_match),
+        education_match: Math.round(item.education_match),
+        matched_skills: [], // Backend doesn't provide this yet
+        raw_score: item.match_score
+      }));
 
       setResults(transformedResults);
       setBackendStatus('online'); // Update status on successful call

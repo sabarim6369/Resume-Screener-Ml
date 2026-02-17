@@ -19,12 +19,6 @@ const api = axios.create({
 export const rankResumes = async (resumes, jobDescription) => {
   const formData = new FormData();
   
-  console.log('=== Sending to API ===');
-  console.log('Job Description:', jobDescription);
-  console.log('Job Description Length:', jobDescription.length);
-  console.log('Number of resumes:', resumes.length);
-  resumes.forEach((r, i) => console.log(`Resume ${i}:`, r.name));
-  
   // Append job description (backend expects 'jd' field)
   formData.append('jd', jobDescription);
   
