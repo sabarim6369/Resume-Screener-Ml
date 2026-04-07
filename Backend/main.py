@@ -89,9 +89,14 @@ async def rank_resumes(
         results.append({
             "filename": resume.filename,
             "match_score": round(detailed_scores['overall']*100, 2),
-            "skills_match": round(detailed_scores['skills']*100, 2),
+            "skills_match": round(detailed_scores['skills_coverage']*100, 2),
+            "skills_quality_match": round(detailed_scores['skills_quality']*100, 2),
             "experience_match": round(detailed_scores['experience']*100, 2),
-            "education_match": round(detailed_scores['education']*100, 2)
+            "education_match": round(detailed_scores['education']*100, 2),
+            "skills_coverage": round(detailed_scores['skills_coverage']*100, 2),
+            "required_skills": detailed_scores['required_skills'],
+            "matched_skills": detailed_scores['matched_skills'],
+            "missing_skills": detailed_scores['missing_skills']
         })
 
     ranked = sorted(results, key=lambda x: x["match_score"], reverse=True)

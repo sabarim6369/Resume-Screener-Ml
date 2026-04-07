@@ -72,13 +72,13 @@ export const exportToPDF = (data, filename = 'resume_rankings.pdf') => {
     content += `Candidate: ${candidate.name || candidate.filename}\n`;
     content += `Overall Score: ${candidate.score || candidate.match_score}%\n`;
     
-    if (candidate.skills_match) {
+    if (candidate.skills_match !== undefined && candidate.skills_match !== null) {
       content += `Skills Match: ${candidate.skills_match}%\n`;
     }
-    if (candidate.experience_match) {
+    if (candidate.experience_match !== undefined && candidate.experience_match !== null) {
       content += `Experience Match: ${candidate.experience_match}%\n`;
     }
-    if (candidate.education_match) {
+    if (candidate.education_match !== undefined && candidate.education_match !== null) {
       content += `Education Match: ${candidate.education_match}%\n`;
     }
     if (candidate.matched_skills && candidate.matched_skills.length > 0) {

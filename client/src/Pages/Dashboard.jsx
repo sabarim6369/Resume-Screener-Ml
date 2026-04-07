@@ -106,7 +106,8 @@ function Dashboard() {
         skills_match: Math.round(item.skills_match),
         experience_match: Math.round(item.experience_match),
         education_match: Math.round(item.education_match),
-        matched_skills: [], // Backend doesn't provide this yet
+        matched_skills: item.matched_skills || [],
+        missing_skills: item.missing_skills || [],
         raw_score: item.match_score
       }));
 
