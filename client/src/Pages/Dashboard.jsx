@@ -11,6 +11,7 @@ function Dashboard() {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [expandedCandidates, setExpandedCandidates] = useState({});
   const [backendStatus, setBackendStatus] = useState('checking'); // 'checking', 'online', 'offline'
   const exportMenuRef = useRef(null);
 
@@ -102,12 +103,16 @@ function Dashboard() {
       const transformedResults = response.map((item) => ({
         name: item.filename,
         score: Math.round(item.match_score),
+        ats_score: Math.round(item.match_score),
         // Use real scores from backend
         skills_match: Math.round(item.skills_match),
         experience_match: Math.round(item.experience_match),
         education_match: Math.round(item.education_match),
+        required_skills: item.required_skills || [],
         matched_skills: item.matched_skills || [],
         missing_skills: item.missing_skills || [],
+        ats_issues: item.ats_issues || [],
+        ats_issues_source: item.ats_issues_source || 'rules',
         raw_score: item.match_score
       }));
 
@@ -143,6 +148,7 @@ function Dashboard() {
     setJobDescription('');
     setResumes([]);
     setResults(null);
+    setExpandedCandidates({});
     setError(null);
     setShowExportMenu(false);
   };
@@ -176,6 +182,39 @@ function Dashboard() {
     if (score >= 75) return 'from-blue-500 to-cyan-500';
     if (score >= 60) return 'from-yellow-500 to-orange-500';
     return 'from-orange-500 to-red-500';
+  };
+
+  const toggleCandidateDetails = (index) => {
+    setExpandedCandidates((prev) => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const getAtsIssues = (candidate) => {
+    if (Array.isArray(candidate.ats_issues) && candidate.ats_issues.length > 0) {
+      return candidate.ats_issues;
+    }
+
+    const issues = [];
+
+    if (candidate.missing_skills.length > 0) {
+      issues.push(`Missing keywords: ${candidate.missing_skills.slice(0, 6).join(', ')}`);
+    }
+
+    if (candidate.experience_match < 65) {
+      issues.push('Weak project descriptions (not strongly aligned to JD responsibilities)');
+    }
+
+    if (candidate.experience_match < 55 || candidate.score < 70) {
+      issues.push('Low business impact evidence (add JD-relevant metrics like delivery speed, cost savings, quality, or scale)');
+    }
+
+    if (issues.length === 0) {
+      issues.push('No major ATS red flags detected for this JD.');
+    }
+
+    return issues;
   };
 
   return (
@@ -479,6 +518,47 @@ function Dashboard() {
                         ></div>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="mt-5 pt-5 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => toggleCandidateDetails(index)}
+                      className="text-purple-300 hover:text-purple-200 font-semibold transition flex items-center gap-2"
+                    >
+                      {expandedCandidates[index] ? 'Hide ATS Insights' : 'View More'}
+                      <svg
+                        className={`w-4 h-4 transition-transform ${expandedCandidates[index] ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {expandedCandidates[index] && (
+                      <div className="mt-4 bg-slate-900/55 rounded-xl border border-white/10 p-4 space-y-3">
+                        <p className="text-white font-semibold">
+                          ATS Score: <span className={getScoreColor(candidate.ats_score)}>{candidate.ats_score}%</span>
+                        </p>
+
+                        <div>
+                          <p className="text-gray-300 font-medium mb-2">Issues</p>
+                          <p className="text-gray-500 text-xs mb-2">
+                            Source: {candidate.ats_issues_source === 'llm' ? 'AI (LLM)' : 'Rule-based fallback'}
+                          </p>
+                          <ul className="space-y-2 text-gray-300 text-sm">
+                            {getAtsIssues(candidate).map((issue, issueIndex) => (
+                              <li key={issueIndex} className="flex items-start gap-2">
+                                <span className="text-pink-400 mt-1">•</span>
+                                <span>{issue}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
