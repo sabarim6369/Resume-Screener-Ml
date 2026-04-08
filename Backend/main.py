@@ -5,6 +5,7 @@ from parser import extract_text_from_pdf
 from preprocess import clean_text
 from ranking import final_score
 from detailed_scoring import calculate_detailed_score
+from ats_feedback import generate_ats_issues
 from typing import List
 
 app = FastAPI()
@@ -81,6 +82,7 @@ async def rank_resumes(
 
         # Calculate detailed scores
         detailed_scores = calculate_detailed_score(clean_resume, clean_jd)
+        ats_feedback = generate_ats_issues(text, jd, detailed_scores)
         
         print(f"Overall score: {detailed_scores['overall']}")
         print(f"Skills: {detailed_scores['skills']}, Experience: {detailed_scores['experience']}, Education: {detailed_scores['education']}")
@@ -96,7 +98,9 @@ async def rank_resumes(
             "skills_coverage": round(detailed_scores['skills_coverage']*100, 2),
             "required_skills": detailed_scores['required_skills'],
             "matched_skills": detailed_scores['matched_skills'],
-            "missing_skills": detailed_scores['missing_skills']
+            "missing_skills": detailed_scores['missing_skills'],
+            "ats_issues": ats_feedback["issues"],
+            "ats_issues_source": ats_feedback["issues_source"]
         })
 
     ranked = sorted(results, key=lambda x: x["match_score"], reverse=True)

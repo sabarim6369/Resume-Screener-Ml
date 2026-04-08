@@ -49,6 +49,17 @@ uvicorn main:app --reload --port 8000
 
 ## Common Issues
 
+### Enable AI-generated ATS issues (optional)
+To generate ATS issue bullets using an LLM instead of fallback rules, set these environment variables before starting the backend:
+
+```bash
+# PowerShell
+$env:GROQ_API_KEY="your_api_key_here"
+$env:GROQ_MODEL="llama-3.1-8b-instant"
+```
+
+If `GROQ_API_KEY` is not set, backend will automatically use rule-based fallback issues.
+
 ### "uvicorn: command not found"
 Make sure the virtual environment is activated and uvicorn is installed:
 ```bash

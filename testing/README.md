@@ -33,6 +33,7 @@ This folder contains a complete testing setup for the Resume Screener project.
 - `api/test_boundary.py`
 - `api/test_performance.py`
 - `ui/test_ui_dashboard.py`
+- `selenium_testing/test_ui_dashboard_selenium.py`
 - `conftest.py`
 - `pytest.ini`
 - `requirements.txt`
@@ -55,6 +56,8 @@ python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
+Selenium tests use Chrome in headless mode and auto-manage ChromeDriver with `webdriver-manager`.
+
 ## Run all tests
 
 ```powershell
@@ -70,6 +73,7 @@ pytest -m negative
 pytest -m boundary
 pytest -m performance
 pytest -m ui
+pytest -m selenium
 ```
 
 ## Notes
